@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام حضور الطلاب - Student Attendance</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a1a2e;
+            --secondary: #16213e;
+            --accent: #e94560;
+            --success: #00d9a5;
+            --warning: #ffc947;
+            --background: #0f0f1a;
+            --card-bg: #1f1f3a;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0c0;
+            --gradient-1: linear-gradient(135deg, #e94560, #ff6b6b);
+            --gradient-2: linear-gradient(135deg, #00d9a5, #00b894);
+            --gradient-3: linear-gradient(135deg, #ffc947, #ff9f43);
+            --teacher-color: #5f27cd;
+            --head-color: #e74c3c;
+            --student-color: #00cec9;
+            --danger-color: #ff4757;
+            --info-color: #3498db;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Cairo', 'Poppins', sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body[lang="en"] { direction: ltr; font-family: 'Poppins', 'Cairo', sans-serif; }
+
+        .bg-animation {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: ''; position: absolute; top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(233, 69, 96, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 217, 165, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(255, 201, 71, 0.05) 0%, transparent 40%);
+            animation: bgMove 20s ease-in-out infinite;
+        }
+
+        @keyframes bgMove {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(5%, 5%) rotate(5deg); }
+            66% { transform: translate(-5%, 3%) rotate(-3deg); }
+        }
+
+        .floating-orb {
+            position: absolute; border-radius: 50%; filter: blur(60px);
+            opacity: 0.3; animation: float 15s ease-in-out infinite;
+        }
+
+        .orb-1 { width: 300px; height: 300px; background: var(--accent); top: 10%; right: 10%; }
+        .orb-2 { width: 200px; height: 200px; background: var(--success); bottom: 20%; left: 10%; animation-delay: -5s; }
+        .orb-3 { width: 150px; height: 150px; background: var(--warning); top: 50%; left: 50%; animation-delay: -10s; }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, -30px) scale(1.1); }
+        }
+
+        header {
+            background: rgba(26, 26, 46, 0.8); backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 2rem; position: sticky; top: 0; z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1400px; margin: 0 auto;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .logo { display: flex; align-items: center; gap: 12px; }
+
+        .logo-icon {
+            width: 50px; height: 50px; background: var(--gradient-1);
+            border-radius: 12px; display: flex; align-items: center;
+            justify-content: center; font-size: 1.5rem;
+            box-shadow: 0 4px 20px rgba(233, 69, 96, 0.4);
+        }
+
+        .logo-text {
+            font-family: 'Tajawal', sans-serif; font-size: 1.5rem; font-weight: 700;
+            background: linear-gradient(135deg, #fff, #a0a0c0);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .header-actions { display: flex; gap: 12px; align-items: center; }
+
+        .logout-btn {
+            padding: 8px 16px; background: rgba(255, 71, 87, 0.2);
+            border: 1px solid #ff4757; color: #ff4757; border-radius: 8px;
+            cursor: pointer; font-family: inherit; font-size: 0.9rem;
+        }
+
+        .logout-btn:hover { background: #ff4757; color: white; }
+
+        .lang-toggle { display: flex; gap: 8px; }
+
+        .lang-btn {
+            padding: 10px 20px; border: 2px solid rgba(255, 255, 255, 0.2);
+            background: transparent; color: var(--text-secondary); border-radius: 25px;
+            cursor: pointer; font-family: inherit; font-size: 0.9rem;
+        }
+
+        .lang-btn.active {
+            background: var(--gradient-1); border-color: var(--accent); color: white;
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+        }
+
+        main { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+        .login-container {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; min-height: 80vh; gap: 40px;
+        }
+
+        .role-selection { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+
+        .role-card {
+            background: rgba(31, 31, 58, 0.8); backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 24px;
+            padding: 40px; cursor: pointer; transition: all 0.3s ease;
+            text-align: center; min-width: 250px;
+        }
+
+        .role-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); }
+        .role-card.teacher { border-color: var(--teacher-color); }
+        .role-card.teacher:hover { border-color: var(--teacher-color); box-shadow: 0 20px 40px rgba(95, 39, 205, 0.3); }
+        .role-card.head { border-color: var(--head-color); }
+        .role-card.head:hover { border-color: var(--head-color); box-shadow: 0 20px 40px rgba(231, 76, 60, 0.3); }
+        .role-card.student { border-color: var(--student-color); }
+        .role-card.student:hover { border-color: var(--student-color); box-shadow: 0 20px 40px rgba(0, 206, 201, 0.3); }
+
+        .role-icon { font-size: 4rem; margin-bottom: 16px; }
+        .role-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+        .role-desc { color: var(--text-secondary); font-size: 0.9rem; }
+
+        .login-form {
+            background: rgba(31, 31, 58, 0.8); backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px;
+            padding: 40px; width: 100%; max-width: 400px;
+        }
+
+        .login-form h2 { text-align: center; margin-bottom: 32px; font-size: 1.8rem; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 0.9rem; }
+
+        .form-input {
+            width: 100%; padding: 14px 18px; background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
+            color: var(--text-primary); font-family: inherit; font-size: 1rem;
+        }
+
+        .form-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 20px rgba(233, 69, 96, 0.2); }
+        .form-input::placeholder { color: var(--text-secondary); }
+
+        .btn {
+            padding: 14px 28px; border: none; border-radius: 12px; cursor: pointer;
+            font-family: inherit; font-size: 1rem; font-weight: 600;
+            transition: all 0.3s ease; display: inline-flex; align-items: center;
+            justify-content: center; gap: 8px;
+        }
+
+        .btn-primary { background: var(--gradient-1); color: white; box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(233, 69, 96, 0.5); }
+        .btn-success { background: var(--gradient-2); color: white; box-shadow: 0 4px 15px rgba(0, 217, 165, 0.3); }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 217, 165, 0.5); }
+        .btn-warning { background: var(--gradient-3); color: #1a1a2e; box-shadow: 0 4px 15px rgba(255, 201, 71, 0.3); }
+        .btn-warning:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 201, 71, 0.5); }
+        .btn-danger { background: linear-gradient(135deg, #ff4757, #ff6b81); color: white; }
+        .btn-info { background: linear-gradient(135deg, #3498db, #2980b9); color: white; }
+        .btn-sm { padding: 8px 16px; font-size: 0.85rem; }
+        .btn-secondary { background: rgba(255, 255, 255, 0.1); color: var(--text-primary); border: 1px solid rgba(255, 255, 255, 0.2); }
+
+        .back-btn { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); cursor: pointer; margin-bottom: 20px; font-size: 0.9rem; }
+        .back-btn:hover { color: var(--text-primary); }
+
+        .card {
+            background: rgba(31, 31, 58, 0.6); backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px;
+            padding: 24px; margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-family: 'Tajawal', sans-serif; font-size: 1.4rem; font-weight: 700;
+            margin-bottom: 20px; display: flex; align-items: center; gap: 12px;
+        }
+
+        .card-icon {
+            width: 36px; height: 36px; background: var(--gradient-1);
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+        }
+
+        .card-icon.teacher { background: linear-gradient(135deg, var(--teacher-color), #8e44ad); }
+        .card-icon.head { background: linear-gradient(135deg, var(--head-color), #c0392b); }
+        .card-icon.student { background: linear-gradient(135deg, var(--student-color), #00b894); }
+
+        .grid { display: grid; gap: 24px; }
+        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+        .grid-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+        .grid-4 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+        .profile-card { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+
+        .avatar {
+            width: 80px; height: 80px; background: var(--gradient-1); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; font-weight: 700;
+        }
+
+        .avatar.teacher { background: linear-gradient(135deg, var(--teacher-color), #8e44ad); }
+        .avatar.head { background: linear-gradient(135deg, var(--head-color), #c0392b); }
+        .avatar.student { background: linear-gradient(135deg, var(--student-color), #00b894); }
+        .avatar.suspended { background: linear-gradient(135deg, #ff4757, #c0392b); }
+
+        .student-list { display: flex; flex-direction: column; gap: 12px; }
+
+        .student-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px; background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
+        }
+
+        .student-item.suspended { opacity: 0.6; border-color: rgba(255, 71, 87, 0.3); }
+
+        .student-info { display: flex; align-items: center; gap: 16px; }
+
+        .student-avatar {
+            width: 50px; height: 50px; background: linear-gradient(135deg, var(--student-color), #00b894);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600;
+        }
+
+        .student-name { font-weight: 600; font-size: 1.1rem; }
+        .student-seat { color: var(--text-secondary); font-size: 0.9rem; }
+        .student-actions { display: flex; gap: 8px; }
+
+        .status-badge {
+            padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 500;
+        }
+
+        .status-present { background: rgba(0, 217, 165, 0.2); color: var(--success); }
+        .status-absent { background: rgba(255, 71, 87, 0.2); color: #ff4757; }
+        .status-late { background: rgba(255, 201, 71, 0.2); color: var(--warning); }
+        .status-excused { background: rgba(95, 39, 205, 0.2); color: #a55eea; }
+        .status-suspended { background: rgba(255, 71, 87, 0.3); color: #ff4757; }
+
+        .subject-card {
+            background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px; padding: 20px; position: relative;
+        }
+
+        .subject-card::before {
+            content: ''; position: absolute; top: 0; left: 0;
+            width: 4px; height: 100%; background: var(--subject-color, var(--accent));
+        }
+
+        .subject-header { display: flex; justify-content: space-between; margin-bottom: 12px; }
+        .subject-name { font-weight: 600; font-size: 1.1rem; }
+        .subject-code { font-size: 0.8rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.1); padding: 4px 10px; border-radius: 20px; }
+
+        .attendance-controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+        .control-group { flex: 1; min-width: 180px; }
+        .control-label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-secondary); }
+
+        .control-select, .control-input {
+            width: 100%; padding: 12px 16px; background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
+            color: var(--text-primary); font-family: inherit; font-size: 1rem;
+        }
+
+        .control-select:focus, .control-input:focus { outline: none; border-color: var(--accent); }
+        .control-select option { background: var(--primary); }
+
+        .attendance-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+        .attendance-btn { flex: 1; min-width: 120px; padding: 16px 24px; font-size: 1rem; font-weight: 600; }
+
+        .stat-card { text-align: center; padding: 24px; }
+        .stat-value { font-size: 2.5rem; font-weight: 700; background: var(--gradient-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-value.teacher { background: linear-gradient(135deg, var(--teacher-color), #8e44ad); -webkit-background-clip: text; }
+        .stat-value.head { background: linear-gradient(135deg, var(--head-color), #c0392b); -webkit-background-clip: text; }
+        .stat-value.student { background: linear-gradient(135deg, var(--student-color), #00b894); -webkit-background-clip: text; }
+        .stat-label { font-size: 0.9rem; color: var(--text-secondary); margin-top: 8px; }
+        .stat-icon { width: 60px; height: 60px; margin: 0 auto 16px; background: rgba(255, 255, 255, 0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+
+        .table-container { overflow-x: auto; }
+        .attendance-table, .final-attendance-table { width: 100%; border-collapse: collapse; }
+        .attendance-table th, .attendance-table td, .final-attendance-table th, .final-attendance-table td {
+            padding: 14px 16px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        body[lang="en"] .attendance-table th, body[lang="en"] .attendance-table td { text-align: left; }
+
+        .attendance-table th { font-weight: 600; color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; }
+        .attendance-table tr:hover { background: rgba(255, 255, 255, 0.03); }
+
+        .final-attendance-table th { background: rgba(95, 39, 205, 0.2); color: #a55eea; font-weight: 600; }
+        .grade-display { font-weight: 600; font-size: 1.1rem; }
+        .grade-high { color: var(--success); }
+        .grade-mid { color: var(--warning); }
+        .grade-low { color: #ff4757; }
+
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); z-index: 1000;
+            align-items: center; justify-content: center;
+        }
+
+        .modal.show { display: flex; }
+
+        .modal-content {
+            background: var(--card-bg); border-radius: 20px; padding: 32px;
+            max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-title { font-size: 1.5rem; margin-bottom: 20px; }
+        .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+
+        .filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+
+        .filter-tab {
+            padding: 8px 16px; border: 1px solid rgba(255, 255, 255, 0.2);
+            background: transparent; color: var(--text-secondary); border-radius: 20px;
+            cursor: pointer; font-family: inherit; font-size: 0.85rem;
+        }
+
+        .filter-tab:hover, .filter-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+        .toast-container {
+            position: fixed; bottom: 24px; right: 24px; z-index: 1001;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+
+        .toast {
+            padding: 16px 24px; border-radius: 12px; background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex; align-items: center; gap: 12px; animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .toast-success { border-left: 4px solid var(--success); }
+        .toast-error { border-left: 4px solid #ff4757; }
+
+        .empty-state { text-align: center; padding: 40px; color: var(--text-secondary); }
+        .empty-icon { font-size: 4rem; margin-bottom: 16px; opacity: 0.5; }
+
+        .streak-card {
+            display: flex; align-items: center; gap: 16px;
+            background: linear-gradient(135deg, rgba(255, 201, 71, 0.1), rgba(255, 159, 67, 0.1));
+            border: 1px solid rgba(255, 201, 71, 0.3);
+        }
+
+        .streak-icon { font-size: 2.5rem; }
+        .streak-value { font-size: 2rem; font-weight: 700; color: var(--warning); }
+        .streak-label { color: var(--text-secondary); }
+
+        .notes-textarea {
+            width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
+            color: var(--text-primary); font-family: inherit; font-size: 0.9rem;
+            resize: vertical; min-height: 80px;
+        }
+
+        .image-upload-container {
+            border: 2px dashed rgba(255, 255, 255, 0.2); border-radius: 12px;
+            padding: 20px; text-align: center; cursor: pointer;
+        }
+
+        .image-upload-container:hover { border-color: var(--accent); background: rgba(233, 69, 96, 0.05); }
+        .image-upload-container input { display: none; }
+        .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+        .upload-text { color: var(--text-secondary); font-size: 0.9rem; }
+        .preview-image { max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 12px; }
+
+        .exam-grades { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+        .exam-grade-item { background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px; text-align: center; }
+        .exam-grade-label { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; }
+        .exam-grade-input { width: 60px; padding: 8px; text-align: center; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: var(--text-primary); }
+
+        .grade-input-small { width: 70px; padding: 8px; text-align: center; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: var(--text-primary); font-size: 1rem; }
+
+        .request-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px; background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; margin-bottom: 12px;
+        }
+
+        .request-info { flex: 1; }
+        .request-student { font-weight: 600; margin-bottom: 4px; }
+        .request-details { font-size: 0.9rem; color: var(--text-secondary); }
+        .request-actions { display: flex; gap: 8px; }
+
+        .badge-new { background: rgba(52, 152, 219, 0.2); color: #3498db; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; margin-right: 8px; }
+
+        footer { text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.85rem; border-top: 1px solid rgba(255, 255, 255, 0.1); margin-top: 40px; }
+        .hidden { display: none !important; }
+
+        @media (max-width: 768px) {
+            header { padding: 1rem; }
+            main { padding: 1rem; }
+            .card { padding: 16px; }
+            .attendance-controls { flex-direction: column; }
+            .attendance-buttons { flex-direction: column; }
+            .attendance-btn { width: 100%; }
+            .exam-grades { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation">
+        <div class="floating-orb orb-1"></div>
+        <div class="floating-orb orb-2"></div>
+        <div class="floating-orb orb-3"></div>
+    </div>
+
+    <div id="loginScreen" class="login-container">
+        <div class="logo" style="flex-direction: column; gap: 16px;">
+            <div class="logo-icon" style="width: 80px; height: 80px; font-size: 2.5rem;">📚</div>
+            <div class="logo-text" data-ar="نظام الحضور الإلكتروني" data-en="Electronic Attendance System"></div>
+        </div>
+
+        <div class="role-selection" id="roleSelection">
+            <div class="role-card head" onclick="showHeadLogin()">
+                <div class="role-icon">🎓</div>
+                <div class="role-title" data-ar="رئيس القسم" data-en="Head of Dept."></div>
+                <div class="role-desc" data-ar="عرض جميع المواد والطلاب" data-en="View all subjects & students"></div>
+            </div>
+            <div class="role-card teacher" onclick="showTeacherLogin()">
+                <div class="role-icon">👨‍🏫</div>
+                <div class="role-title" data-ar="معلم" data-en="Teacher"></div>
+                <div class="role-desc" data-ar="لوحة تحكم للمادة المسجلة" data-en="Control panel for assigned subject"></div>
+            </div>
+            <div class="role-card student" onclick="showStudentLogin()">
+                <div class="role-icon">👨‍🎓</div>
+                <div class="role-title" data-ar="الطالب" data-en="Student"></div>
+                <div class="role-desc" data-ar="تسجيل حضورك ومتابعة حالتك" data-en="Mark your attendance"></div>
+            </div>
+        </div>
+
+        <div class="login-form hidden" id="headLoginForm">
+            <div class="back-btn" onclick="showRoleSelection()">
+                <span>←</span>
+                <span data-ar="رجوع" data-en="Back"></span>
+            </div>
+            <h2 data-ar="تسجيل دخول رئيس القسم" data-en="Head Login"></h2>
+            <div class="form-group">
+                <label class="form-label" data-ar="اسم المستخدم" data-en="Username"></label>
+                <input type="text" class="form-input" id="headName" placeholder="أدخل اسمك">
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-ar="كلمة المرور" data-en="Password"></label>
+                <input type="password" class="form-input" id="headPassword" placeholder="أدخل كلمة المرور">
+            </div>
+            <button class="btn btn-primary" onclick="loginHead()" data-ar="دخول" data-en="Login">دخول</button>
+        </div>
+
+        <div class="login-form hidden" id="teacherLoginForm">
+            <div class="back-btn" onclick="showRoleSelection()">
+                <span>←</span>
+                <span data-ar="رجوع" data-en="Back"></span>
+            </div>
+            <h2 data-ar="تسجيل دخول المعلم" data-en="Teacher Login"></h2>
+            <div class="form-group">
+                <label class="form-label" data-ar="اسم المعلم" data-en="Teacher Name"></label>
+                <input type="text" class="form-input" id="teacherName" placeholder="أدخل اسمك">
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-ar="المادة" data-en="Subject"></label>
+                <select class="form-input" id="teacherSubject">
+                    <option value="" data-ar="اختر المادة" data-en="Select Subject">اختر المادة</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-ar="كلمة المرور" data-en="Password"></label>
+                <input type="password" class="form-input" id="teacherPassword" placeholder="أدخل كلمة المرور">
+            </div>
+            <button class="btn btn-primary" onclick="loginTeacher()" data-ar="دخول" data-en="Login">دخول</button>
+        </div>
+
+        <div class="login-form hidden" id="studentLoginForm">
+            <div class="back-btn" onclick="showRoleSelection()">
+                <span>←</span>
+                <span data-ar="رجوع" data-en="Back"></span>
+            </div>
+            <h2 data-ar="تسجيل دخول الطالب" data-en="Student Login"></h2>
+            <div class="form-group">
+                <label class="form-label" data-ar="اسم الطالب" data-en="Student Name"></label>
+                <input type="text" class="form-input" id="studentNameInput" placeholder="أدخل اسمك">
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-ar="رقم المقعد" data-en="Seat Number"></label>
+                <input type="text" class="form-input" id="seatNumber" placeholder="أدخل رقم المقعد">
+            </div>
+            <button class="btn btn-success" onclick="loginStudent()" data-ar="دخول" data-en="Login">دخول</button>
+        </div>
+    </div>
+
+    <div id="mainApp" class="hidden">
+        <header>
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon" id="headerLogoIcon">📚</div>
+                    <div class="logo-text" data-ar="نظام الحضور" data-en="Attendance System"></div>
+                </div>
+                <div class="header-actions">
+                    <div id="userInfo" style="color: var(--text-secondary); font-size: 0.9rem;"></div>
+                    <button class="logout-btn" onclick="logout()" data-ar="تسجيل خروج" data-en="Logout">تسجيل خروج</button>
+                    <div class="lang-toggle">
+                        <button class="lang-btn active" data-lang="ar" onclick="setLanguage('ar')">العربية</button>
+                        <button class="lang-btn" data-lang="en" onclick="setLanguage('en')">English</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main id="mainContent"></main>
+
+        <footer>
+            <p data-ar="نظام حضور الطلاب - version 5.0" data-en="Student Attendance System - Version 5.0"></p>
+        </footer>
+    </div>
+
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <h3 class="modal-title" data-ar="تعديل الطالب" data-en="Edit Student"></h3>
+            <input type="hidden" id="editStudentId">
+            <div class="form-group">
+                <label class="form-label" data-ar="اسم الطالب" data-en="Student Name"></label>
+                <input type="text" class="form-input" id="editStudentName">
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-ar="رقم المقعد" data-en="Seat Number"></label>
+                <input type="text" class="form-input" id="editSeatNumber">
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-ar="الدرجات" data-en="Exam Grades"></label>
+                <div class="exam-grades">
+                    <div class="exam-grade-item">
+                        <div class="exam-grade-label" data-ar="كوز" data-en="Course"></div>
+                        <input type="number" class="exam-grade-input" id="editGradeCourse" min="0" max="20" value="0">
+                    </div>
+                    <div class="exam-grade-item">
+                        <div class="exam-grade-label" data-ar="ميد" data-en="Midterm"></div>
+                        <input type="number" class="exam-grade-input" id="editGradeMid" min="0" max="20" value="0">
+                    </div>
+                    <div class="exam-grade-item">
+                        <div class="exam-grade-label" data-ar="فاينل" data-en="Final"></div>
+                        <input type="number" class="exam-grade-input" id="editGradeFinal" min="0" max="20" value="0">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="closeModal()" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
+                <button class="btn btn-success" onclick="saveStudentEdit()" data-ar="حفظ" data-en="Save">حفظ</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="gradeModal">
+        <div class="modal-content">
+            <h3 class="modal-title" data-ar="إدخال الدرجات" data-en="Enter Grades"></h3>
+            <input type="hidden" id="gradeStudentId">
+            <input type="hidden" id="gradeSubjectId">
+            <div class="form-group">
+                <label class="form-label" data-ar="اسم الطالب" data-en="Student Name"></label>
+                <input type="text" class="form-input" id="gradeStudentName" readonly>
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-ar="الدرجات للمادة (0-20)" data-en="Subject Grades (0-20)"></label>
+                <div class="exam-grades">
+                    <div class="exam-grade-item">
+                        <div class="exam-grade-label" data-ar="كوز" data-en="Course"></div>
+                        <input type="number" class="exam-grade-input" id="gradeCourse" min="0" max="20" value="0">
+                    </div>
+                    <div class="exam-grade-item">
+                        <div class="exam-grade-label" data-ar="ميد" data-en="Midterm"></div>
+                        <input type="number" class="exam-grade-input" id="gradeMid" min="0" max="20" value="0">
+                    </div>
+                    <div class="exam-grade-item">
+                        <div class="exam-grade-label" data-ar="فاينل" data-en="Final"></div>
+                        <input type="number" class="exam-grade-input" id="gradeFinal" min="0" max="20" value="0">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="closeGradeModal()" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
+                <button class="btn btn-success" onclick="saveGrades()" data-ar="حفظ" data-en="Save">حفظ</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="attendanceModal">
+        <div class="modal-content">
+            <h3 class="modal-title" data-ar="تفاصيل الحضور" data-en="Attendance Details"></h3>
+            <input type="hidden" id="attendanceStudentId">
+            <input type="hidden" id="attendanceDate">
+            <input type="hidden" id="attendanceSubjectId">
+            
+            <div class="form-group">
+                <label class="form-label" data-ar="الحالة" data-en="Status"></label>
+                <select class="control-select" id="attendanceStatus">
+                    <option value="present" data-ar="حاضر" data-en="Present">حاضر</option>
+                    <option value="absent" data-ar="غائب" data-en="Absent">غائب</option>
+                    <option value="late" data-ar="متأخر" data-en="Late">متأخر</option>
+                    <option value="excused" data-ar="معذور" data-en="Excused">معذور</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" data-ar="الدرجة (0-20)" data-en="Grade (0-20)"></label>
+                <input type="number" class="form-input" id="attendanceGrade" min="0" max="20" value="20">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" data-ar="العذر" data-en="Excuse"></label>
+                <textarea class="notes-textarea" id="attendanceExcuse" placeholder="اكتب العذر هنا..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" data-ar="صورة" data-en="Image"></label>
+                <div class="image-upload-container" onclick="document.getElementById('imageInput').click()">
+                    <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(event)">
+                    <div class="upload-icon">📷</div>
+                    <div class="upload-text" data-ar="اضغط لرفع صورة" data-en="Click to upload">اضغط لرفع صورة</div>
+                    <img id="imagePreview" class="preview-image hidden">
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="closeAttendanceModal()" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
+                <button class="btn btn-success" onclick="saveAttendance()" data-ar="حفظ" data-en="Save">حفظ</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="addStudentModal">
+        <div class="modal-content">
+            <h3 class="modal-title" data-ar="إضافة طالب جديد" data-en="Add New Student"></h3>
+            <div class="form-group">
+                <label class="form-label" data-ar="اسم الطالب" data-en="Student Name"></label>
+                <input type="text" class="form-input" id="newStudentName">
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-ar="رقم المقعد" data-en="Seat Number"></label>
+                <input type="text" class="form-input" id="newStudentSeat">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="closeAddStudentModal()" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
+                <button class="btn btn-success" onclick="addStudent()" data-ar="إضافة" data-en="Add">إضافة</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="addSubjectModal">
+        <div class="modal-content">
+            <h3 class="modal-title" data-ar="إضافة مادة جديدة" data-en="Add New Subject"></h3>
+            <div class="form-group">
+                <label class="form-label" data-ar="اسم المادة" data-en="Subject Name"></label>
+                <input type="text" class="form-input" id="newSubjectName">
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-ar="كود المادة" data-en="Subject Code"></label>
+                <input type="text" class="form-input" id="newSubjectCode">
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-ar="لون المادة" data-en="Subject Color"></label>
+                <input type="color" class="form-input" id="newSubjectColor" value="#e94560">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="closeAddSubjectModal()" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
+                <button class="btn btn-success" onclick="addSubject()" data-ar="إضافة" data-en="Add">إضافة</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="leaveRequestModal">
+        <div class="modal-content">
+            <h3 class="modal-title" data-ar="طلب إجازة" data-en="Leave Request"></h3>
+            <div class="form-group">
+                <label class="form-label" data-ar="التاريخ" data-en="Date"></label>
+                <input type="date" class="form-input" id="leaveDate">
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-ar="نوع الإجازة" data-en="Leave Type"></label>
+                <select class="control-select" id="leaveType">
+                    <option value="absence" data-ar="غياب" data-en="Absence">غياب</option>
+                    <option value="late" data-ar="تأخر" data-en="Late Arrival">تأخر</option>
+                    <option value="vacation" data-ar="إجازة" data-en="Vacation">إجازة</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-ar="العذر" data-en="Reason"></label>
+                <textarea class="notes-textarea" id="leaveExcuse" placeholder="اكتب العذر..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="closeLeaveRequestModal()" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
+                <button class="btn btn-success" onclick="submitLeaveRequest()" data-ar="إرسال" data-en="Submit">إرسال</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        const defaultSubjects = [
+            { id: 1, name: 'الرياضيات', code: 'MATH101', color: '#e94560' },
+            { id: 2, name: 'الفيزياء', code: 'PHYS101', color: '#00d9a5' },
+            { id: 3, name: 'الكيمياء', code: 'CHEM101', color: '#ffc947' },
+            { id: 4, name: 'الحاسوب', code: 'CS101', color: '#5f27cd' },
+            { id: 5, name: 'اللغة الإنجليزية', code: 'ENG101', color: '#00cec9' }
+        ];
+
+        // Grades are now stored per subject per student: studentGrades[studentId][subjectId] = {course, mid, final}
+        let state = {
+            language: 'ar',
+            currentUser: null,
+            userRole: null,
+            teacherSubjectId: null,
+            subjects: [],
+            students: [],
+            attendance: [],
+            leaveRequests: [],
+            studentGrades: {} // { studentId: { subjectId: { course: 0, mid: 0, final: 0 } } }
+        };
+
+        function init() {
+            loadState();
+            populateSubjectSelect();
+            setLanguage(state.language);
+            if (state.currentUser) showMainApp();
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('attendanceSystem5');
+            if (saved) {
+                state = JSON.parse(saved);
+            } else {
+                state.subjects = [...defaultSubjects];
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem('attendanceSystem5', JSON.stringify(state));
+        }
+
+        function populateSubjectSelect() {
+            const select = document.getElementById('teacherSubject');
+            if (select) {
+                select.innerHTML = `<option value="">${state.language === 'ar' ? 'اختر المادة' : 'Select Subject'}</option>`;
+                state.subjects.forEach(s => {
+                    select.innerHTML += `<option value="${s.id}">${state.language === 'ar' ? getSubjectNameAr(s.id) : s.name}</option>`;
+                });
+            }
+        }
+
+        function showRoleSelection() {
+            document.getElementById('roleSelection').classList.remove('hidden');
+            document.getElementById('headLoginForm').classList.add('hidden');
+            document.getElementById('teacherLoginForm').classList.add('hidden');
+            document.getElementById('studentLoginForm').classList.add('hidden');
+        }
+
+        function showHeadLogin() {
+            document.getElementById('roleSelection').classList.add('hidden');
+            document.getElementById('headLoginForm').classList.remove('hidden');
+        }
+
+        function showTeacherLogin() {
+            populateSubjectSelect();
+            document.getElementById('roleSelection').classList.add('hidden');
+            document.getElementById('teacherLoginForm').classList.remove('hidden');
+        }
+
+        function showStudentLogin() {
+            document.getElementById('roleSelection').classList.add('hidden');
+            document.getElementById('studentLoginForm').classList.remove('hidden');
+        }
+
+        function loginHead() {
+            const name = document.getElementById('headName').value;
+            const password = document.getElementById('headPassword').value;
+            if (!name || !password) {
+                showToast(state.language === 'ar' ? 'الرجاء إدخال جميع البيانات' : 'Please enter all data', 'error');
+                return;
+            }
+            state.currentUser = name;
+            state.userRole = 'head';
+            state.teacherSubjectId = null;
+            saveState();
+            showMainApp();
+            showToast(state.language === 'ar' ? 'مرحباً يا رئيس القسم' : 'Welcome Head', 'success');
+        }
+
+        function loginTeacher() {
+            const name = document.getElementById('teacherName').value;
+            const subjectId = document.getElementById('teacherSubject').value;
+            const password = document.getElementById('teacherPassword').value;
+            if (!name || !subjectId || !password) {
+                showToast(state.language === 'ar' ? 'الرجاء إدخال جميع البيانات' : 'Please enter all data', 'error');
+                return;
+            }
+            state.currentUser = name;
+            state.userRole = 'teacher';
+            state.teacherSubjectId = parseInt(subjectId);
+            saveState();
+            showMainApp();
+            showToast(state.language === 'ar' ? 'مرحباً يا معلم' : 'Welcome teacher', 'success');
+        }
+
+        function loginStudent() {
+            const name = document.getElementById('studentNameInput').value;
+            const seat = document.getElementById('seatNumber').value;
+            if (!name || !seat) {
+                showToast(state.language === 'ar' ? 'الرجاء إدخال جميع البيانات' : 'Please enter all data', 'error');
+                return;
+            }
+            const student = state.students.find(s => s.name === name && s.seatNumber === seat);
+            if (!student) {
+                showToast(state.language === 'ar' ? 'الطالب غير موجود' : 'Student not found', 'error');
+                return;
+            }
+            if (student.suspended) {
+                showToast(state.language === 'ar' ? 'تم فصل هذا الطالب' : 'This student is suspended', 'error');
+                return;
+            }
+            state.currentUser = name;
+            state.userRole = 'student';
+            state.currentStudentId = student.id;
+            saveState();
+            showMainApp();
+            showToast(state.language === 'ar' ? 'مرحباً يا طالب' : 'Welcome student', 'success');
+        }
+
+        function logout() {
+            state.currentUser = null;
+            state.userRole = null;
+            state.teacherSubjectId = null;
+            state.currentStudentId = null;
+            saveState();
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            showRoleSelection();
+        }
+
+        function showMainApp() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            
+            const userInfo = document.getElementById('userInfo');
+            let roleText = '';
+            if (state.userRole === 'head') roleText = state.language === 'ar' ? 'رئيس القسم' : 'Head of Dept.';
+            else if (state.userRole === 'teacher') roleText = state.language === 'ar' ? 'معلم' : 'Teacher';
+            else roleText = state.language === 'ar' ? 'طالب' : 'Student';
+            
+            let subjectInfo = '';
+            if (state.userRole === 'teacher' && state.teacherSubjectId) {
+                const subject = state.subjects.find(s => s.id === state.teacherSubjectId);
+                subjectInfo = ` - ${subject ? (state.language === 'ar' ? getSubjectNameAr(subject.id) : subject.name) : ''}`;
+            }
+            
+            userInfo.textContent = state.currentUser + ' (' + roleText + subjectInfo + ')';
+
+            const logoIcon = document.getElementById('headerLogoIcon');
+            if (state.userRole === 'head') logoIcon.textContent = '🎓';
+            else if (state.userRole === 'teacher') logoIcon.textContent = '👨‍🏫';
+            else logoIcon.textContent = '👨‍🎓';
+
+            if (state.userRole === 'head') {
+                renderHeadDashboard();
+            } else if (state.userRole === 'teacher') {
+                renderTeacherDashboard();
+            } else {
+                renderStudentDashboard();
+            }
+        }
+
+        function setLanguage(lang) {
+            state.language = lang;
+            document.documentElement.lang = lang;
+            document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+            updateUIText();
+            saveState();
+        }
+
+        function updateUIText() {
+            const lang = state.language;
+            document.querySelectorAll('[data-ar]').forEach(el => {
+                const text = el.dataset[lang] || el.dataset.ar;
+                if (el.tagName === 'INPUT') el.placeholder = text;
+                else el.textContent = text;
+            });
+        }
+
+        // Get grades for a student in a specific subject
+        function getStudentSubjectGrades(studentId, subjectId) {
+            if (!state.studentGrades[studentId]) {
+                state.studentGrades[studentId] = {};
+            }
+            if (!state.studentGrades[studentId][subjectId]) {
+                state.studentGrades[studentId][subjectId] = { course: 0, mid: 0, final: 0 };
+            }
+            return state.studentGrades[studentId][subjectId];
+        }
+
+        function renderHeadDashboard() {
+            const main = document.getElementById('mainContent');
+            const lang = state.language;
+            const pendingRequests = state.leaveRequests.filter(r => !r.approved);
+
+            main.innerHTML = `
+                <div class="grid grid-4">
+                    <div class="card stat-card">
+                        <div class="stat-icon">👨‍🎓</div>
+                        <div class="stat-value head">${state.students.length}</div>
+                        <div class="stat-label" data-ar="عدد الطلاب" data-en="Students"></div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-icon">📖</div>
+                        <div class="stat-value head">${state.subjects.length}</div>
+                        <div class="stat-label" data-ar="المواد" data-en="Subjects"></div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-value head">${pendingRequests.length}</div>
+                        <div class="stat-label" data-ar="طلبات الإجازة" data-en="Leave Requests"></div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-icon">❌</div>
+                        <div class="stat-value head">${getTotalAbsent()}</div>
+                        <div class="stat-label" data-ar="إجمالي الغياب" data-en="Total Absent"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">
+                        <div class="card-icon head">📚</div>
+                        <span data-ar="إدارة المواد" data-en="Subject Management"></span>
+                    </h2>
+                    <button class="btn btn-primary" onclick="openAddSubjectModal()" style="margin-bottom: 20px;">
+                        <span>➕</span>
+                        <span data-ar="إضافة مادة" data-en="Add Subject">إضافة مادة</span>
+                    </button>
+                    <div class="student-list">
+                        ${state.subjects.map(s => `
+                            <div class="student-item">
+                                <div class="student-info">
+                                    <div class="student-avatar" style="background: linear-gradient(135deg, ${s.color}, ${s.color}88);">${s.name.charAt(0)}</div>
+                                    <div>
+                                        <div class="student-name">${lang === 'ar' ? getSubjectNameAr(s.id) : s.name}</div>
+                                        <div class="student-seat">${s.code}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                ${pendingRequests.length > 0 ? `
+                <div class="card">
+                    <h2 class="card-title">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #3498db, #2980b9);">📋</div>
+                        <span data-ar="طلبات الإجازة المعلقة" data-en="Pending Leave Requests"></span>
+                    </h2>
+                    ${pendingRequests.map(req => {
+                        const student = state.students.find(s => s.id === req.studentId);
+                        if (!student) return '';
+                        return `
+                        <div class="request-item">
+                            <div class="request-info">
+                                <div class="request-student">${student.name} <span class="badge-new">جديد</span></div>
+                                <div class="request-details">
+                                    ${lang === 'ar' ? 'التاريخ: ' : 'Date: '}${req.date} | 
+                                    ${req.type === 'absence' ? (lang === 'ar' ? 'غياب' : 'Absence') : 
+                                      req.type === 'late' ? (lang === 'ar' ? 'تأخر' : 'Late') : 
+                                      (lang === 'ar' ? 'إجازة' : 'Vacation')}
+                                    ${req.excuse ? '<br>' + req.excuse : ''}
+                                </div>
+                            </div>
+                            <div class="request-actions">
+                                <button class="btn btn-success btn-sm" onclick="approveLeaveRequest(${req.id})">✅ ${lang === 'ar' ? 'موافقة' : 'Approve'}</button>
+                                <button class="btn btn-danger btn-sm" onclick="rejectLeaveRequest(${req.id})">❌ ${lang === 'ar' ? 'رفض' : 'Reject'}</button>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+                ` : ''}
+
+                <div class="card">
+                    <h2 class="card-title">
+                        <div class="card-icon head">👥</div>
+                        <span data-ar="إدارة الطلاب" data-en="Student Management"></span>
+                    </h2>
+                    <button class="btn btn-primary" onclick="openAddStudentModal()" style="margin-bottom: 20px;">
+                        <span>➕</span>
+                        <span data-ar="إضافة طالب" data-en="Add Student">إضافة طالب</span>
+                    </button>
+                    <div class="student-list" id="studentList">
+                        ${renderStudentList()}
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">
+                        <div class="card-icon head">📊</div>
+                        <span data-ar="التقرير النهائي الشامل" data-en="Final Comprehensive Report"></span>
+                    </h2>
+                    <div class="table-container">
+                        <table class="final-attendance-table">
+                            <thead>
+                                <tr>
+                                    <th>${lang === 'ar' ? 'رقم المقعد' : 'Seat No.'}</th>
+                                    <th>${lang === 'ar' ? 'اسم الطالب' : 'Student Name'}</th>
+                                    <th>${lang === 'ar' ? 'الحالة' : 'Status'}</th>
+                                    <th>${lang === 'ar' ? 'حضر' : 'Present'}</th>
+                                    <th>${lang === 'ar' ? 'غاب' : 'Absent'}</th>
+                                    <th>${lang === 'ar' ? 'النسبة' : '%'}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${renderFinalAttendance()}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTeacherDashboard() {
+            const main = document.getElementById('mainContent');
+            const lang = state.language;
+            const pendingRequests = state.leaveRequests.filter(r => !r.approved);
+            const subject = state.subjects.find(s => s.id === state.teacherSubjectId);
+            const subjectName = subject ? (lang === 'ar' ? getSubjectNameAr(subject.id) : subject.name) : '';
+
+            main.innerHTML = `
+                <div class="grid grid-4">
+                    <div class="card stat-card">
+                        <div class="stat-icon">👨‍🎓</div>
+                        <div class="stat-value teacher">${state.students.length}</div>
+                        <div class="stat-label" data-ar="عدد الطلاب" data-en="Students"></div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-icon">📖</div>
+                        <div class="stat-value teacher">${subjectName}</div>
+                        <div class="stat-label" data-ar="المادة الحالية" data-en="Current Subject"></div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-value teacher">${pendingRequests.length}</div>
+                        <div class="stat-label" data-ar="طلبات الإجازة" data-en="Leave Requests"></div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-icon">❌</div>
+                        <div class="stat-value teacher">${getSubjectAbsent()}</div>
+                        <div class="stat-label" data-ar="غياب المادة" data-en="Subject Absent"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">
+                        <div class="card-icon teacher">📝</div>
+                        <span data-ar="تسجيل الحضور" data-en="Mark Attendance"></span>
+                    </h2>
+                    <div class="attendance-controls">
+                        <div class="control-group">
+                            <label class="control-label" data-ar="التاريخ" data-en="Date"></label>
+                            <input type="date" class="control-input" id="attendanceDate" value="${new Date().toISOString().split('T')[0]}">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label" data-ar="المادة" data-en="Subject"></label>
+                            <select class="control-select" id="attendanceSubject" disabled>
+                                <option value="${state.teacherSubjectId}">${subjectName}</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label" data-ar="الطالب" data-en="Student"></label>
+                            <select class="control-select" id="attendanceStudentSelect">
+                                <option value="">${lang === 'ar' ? 'اختر الطالب' : 'Select Student'}</option>
+                                ${state.students.filter(s => !s.suspended).map(s => `<option value="${s.id}">${s.name} - ${s.seatNumber}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="attendance-buttons" style="margin-top: 16px;">
+                        <button class="btn btn-success attendance-btn" onclick="markAttendance('present')">
+                            <span>✅</span>
+                            <span data-ar="حاضر" data-en="Present">حاضر</span>
+                        </button>
+                        <button class="btn btn-danger attendance-btn" onclick="markAttendance('absent')">
+                            <span>❌</span>
+                            <span data-ar="غائب" data-en="Absent">غائب</span>
+                        </button>
+                        <button class="btn btn-warning attendance-btn" onclick="markAttendance('late')">
+                            <span>⏰</span>
+                            <span data-ar="متأخر" data-en="Late">متأخر</span>
+                        </button>
+                        <button class="btn btn-secondary attendance-btn" onclick="openAttendanceModal()" style="background: rgba(95, 39, 205, 0.2); border-color: #5f27cd; color: #a55eea;">
+                            <span>📋</span>
+                            <span data-ar="تفاصيل" data-en="Details">تفاصيل</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">
+                        <div class="card-icon teacher">📊</div>
+                        <span data-ar="درجات المادة" data-en="Subject Grades"></span>
+                    </h2>
+                    <div class="table-container">
+                        <table class="final-attendance-table">
+                            <thead>
+                                <tr>
+                                    <th>${lang === 'ar' ? 'رقم المقعد' : 'Seat No.'}</th>
+                                    <th>${lang === 'ar' ? 'اسم الطالب' : 'Student Name'}</th>
+                                    <th>${lang === 'ar' ? 'كوز' : 'Course'}</th>
+                                    <th>${lang === 'ar' ? 'ميد' : 'Mid'}</th>
+                                    <th>${lang === 'ar' ? 'فاينل' : 'Final'}</th>
+                                    <th>${lang === 'ar' ? 'الإجمالي' : 'Total'}</th>
+                                    <th>${lang === 'ar' ? 'إجراءات' : 'Actions'}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${renderSubjectGrades()}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">
+                        <div class="card-icon teacher">📈</div>
+                        <span data-ar="تقرير المادة" data-en="Subject Report"></span>
+                    </h2>
+                    <div class="table-container">
+                        <table class="final-attendance-table">
+                            <thead>
+                                <tr>
+                                    <th>${lang === 'ar' ? 'رقم المقعد' : 'Seat No.'}</th>
+                                    <th>${lang === 'ar' ? 'اسم الطالب' : 'Student Name'}</th>
+                                    <th>${lang === 'ar' ? 'حضر' : 'Present'}</th>
+                                    <th>${lang === 'ar' ? 'غاب' : 'Absent'}</th>
+                                    <th>${lang === 'ar' ? 'النسبة' : '%'}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${renderSubjectAttendance()}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSubjectGrades() {
+            const lang = state.language;
+            const subjectId = state.teacherSubjectId;
+            
+            return state.students.map(student => {
+                const grades = getStudentSubjectGrades(student.id, subjectId);
+                const total = (grades.course || 0) + (grades.mid || 0) + (grades.final || 0);
+                
+                return `
+                    <tr>
+                        <td>${student.seatNumber}</td>
+                        <td>${student.name}</td>
+                        <td>${grades.course || 0}</td>
+                        <td>${grades.mid || 0}</td>
+                        <td>${grades.final || 0}</td>
+                        <td style="font-weight: bold; color: ${total >= 30 ? 'var(--success)' : total >= 15 ? 'var(--warning)' : 'var(--danger)'}">${total}/60</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="openGradeModal(${student.id})">✏️</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openGradeModal(studentId) {
+            const student = state.students.find(s => s.id === studentId);
+            if (!student) return;
+            
+            const subjectId = state.teacherSubjectId;
+            const grades = getStudentSubjectGrades(studentId, subjectId);
+            
+            document.getElementById('gradeStudentId').value = studentId;
+            document.getElementById('gradeSubjectId').value = subjectId;
+            document.getElementById('gradeStudentName').value = student.name;
+            document.getElementById('gradeCourse').value = grades.course || 0;
+            document.getElementById('gradeMid').value = grades.mid || 0;
+            document.getElementById('gradeFinal').value = grades.final || 0;
+            
+            document.getElementById('gradeModal').classList.add('show');
+        }
+
+        function closeGradeModal() {
+            document.getElementById('gradeModal').classList.remove('show');
+        }
+
+        function saveGrades() {
+            const studentId = parseInt(document.getElementById('gradeStudentId').value);
+            const subjectId = parseInt(document.getElementById('gradeSubjectId').value);
+            const course = parseInt(document.getElementById('gradeCourse').value) || 0;
+            const mid = parseInt(document.getElementById('gradeMid').value) || 0;
+            const final = parseInt(document.getElementById('gradeFinal').value) || 0;
+            
+            if (!state.studentGrades[studentId]) {
+                state.studentGrades[studentId] = {};
+            }
+            state.studentGrades[studentId][subjectId] = { course, mid, final };
+            
+            saveState();
+            closeGradeModal();
+            renderTeacherDashboard();
+            showToast(state.language === 'ar' ? 'تم حفظ الدرجات' : 'Grades saved', 'success');
+        }
+
+        function renderStudentList() {
+            if (state.students.length === 0) {
+                return `<div class="empty-state"><div class="empty-icon">👥</div><p data-ar="لا يوجد طلاب" data-en="No students">لا يوجد طلاب</p></div>`;
+            }
+
+            return state.students.map(student => `
+                <div class="student-item ${student.suspended ? 'suspended' : ''}">
+                    <div class="student-info">
+                        <div class="student-avatar">${student.name.charAt(0)}</div>
+                        <div>
+                            <div class="student-name">
+                                ${student.name}
+                                ${student.suspended ? '<span class="status-badge status-suspended">' + (state.language === 'ar' ? 'مفصول' : 'Suspended') + '</span>' : ''}
+                            </div>
+                            <div class="student-seat">${state.language === 'ar' ? 'رقم المقعد' : 'Seat No.'}: ${student.seatNumber}</div>
+                        </div>
+                    </div>
+                    <div class="student-actions">
+                        <button class="btn btn-sm btn-primary" onclick="openEditStudentModal(${student.id})">✏️</button>
+                        <button class="btn btn-sm ${student.suspended ? 'btn-success' : 'btn-danger'}" onclick="toggleStudentStatus(${student.id})">
+                            ${student.suspended ? '✅' : '🚫'}
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderFinalAttendance() {
+            const lang = state.language;
+            return state.students.map(student => {
+                const present = state.attendance.filter(a => a.studentId === student.id && (a.status === 'present' || a.status === 'late' || a.status === 'excused')).length;
+                const absent = state.attendance.filter(a => a.studentId === student.id && a.status === 'absent').length;
+                const total = state.attendance.filter(a => a.studentId === student.id).length;
+                const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+
+                return `
+                    <tr>
+                        <td>${student.seatNumber}</td>
+                        <td>${student.name}</td>
+                        <td>${student.suspended ? '<span class="status-badge status-suspended">' + (lang === 'ar' ? 'مفصول' : 'Suspended') + '</span>' : '<span class="status-badge status-present">' + (lang === 'ar' ? 'نشط' : 'Active') + '</span>'}</td>
+                        <td>${present}</td>
+                        <td>${absent}</td>
+                        <td>${percentage}%</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderSubjectAttendance() {
+            const lang = state.language;
+            const subjectId = state.teacherSubjectId;
+            
+            return state.students.map(student => {
+                const present = state.attendance.filter(a => a.studentId === student.id && a.subjectId === subjectId && (a.status === 'present' || a.status === 'late' || a.status === 'excused')).length;
+                const absent = state.attendance.filter(a => a.studentId === student.id && a.subjectId === subjectId && a.status === 'absent').length;
+                const total = state.attendance.filter(a => a.studentId === student.id && a.subjectId === subjectId).length;
+                const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+
+                return `
+                    <tr>
+                        <td>${student.seatNumber}</td>
+                        <td>${student.name}</td>
+                        <td>${present}</td>
+                        <td>${absent}</td>
+                        <td>${percentage}%</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderStudentDashboard() {
+            const main = document.getElementById('mainContent');
+            const lang = state.language;
+            const student = state.students.find(s => s.id === state.currentStudentId);
+
+            if (!student) {
+                main.innerHTML = `<div class="empty-state"><p>Student not found</p></div>`;
+                return;
+            }
+
+            main.innerHTML = `
+                <div class="card">
+                    <h2 class="card-title">
+                        <div class="card-icon student">👤</div>
+                        <span data-ar="معلومات الطالب" data-en="Student Information">معلومات الطالب</span>
+                    </h2>
+                    <div class="profile-card">
+                        <div class="avatar student">${student.name.charAt(0)}</div>
+                        <div class="profile-info">
+                            <div class="student-name" style="font-size: 1.3rem;">${student.name}</div>
+                            <div class="student-seat">${lang === 'ar' ? 'رقم المقعد' : 'Seat Number'}: ${student.seatNumber}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">
+                        <div class="card-icon student" style="background: linear-gradient(135deg, #f39c12, #e67e22);">📊</div>
+                        <span data-ar="درجات المواد" data-en="Subject Grades">درجات المواد</span>
+                    </h2>
+                    ${state.subjects.map(subject => {
+                        const grades = getStudentSubjectGrades(student.id, subject.id);
+                        const total = (grades.course || 0) + (grades.mid || 0) + (grades.final || 0);
+                        return `
+                            <div class="subject-card" style="margin-bottom: 12px;">
+                                <div class="subject-header">
+                                    <div class="subject-name" style="color: ${subject.color}">${lang === 'ar' ? getSubjectNameAr(subject.id) : subject.name}</div>
+                                    <div class="subject-code">${subject.code}</div>
+                                </div>
+                                <div class="exam-grades">
+                                    <div class="exam-grade-item">
+                                        <div class="exam-grade-label" data-ar="كوز" data-en="Course">كوز</div>
+                                        <div class="stat-value student" style="font-size: 1.5rem;">${grades.course || 0}</div>
+                                    </div>
+                                    <div class="exam-grade-item">
+                                        <div class="exam-grade-label" data-ar="ميد" data-en="Midterm">ميد</div>
+                                        <div class="stat-value student" style="font-size: 1.5rem;">${grades.mid || 0}</div>
+                                    </div>
+                                    <div class="exam-grade-item">
+                                        <div class="exam-grade-label" data-ar="فاينل" data-en="Final">فاينل</div>
+                                        <div class="stat-value student" style="font-size: 1.5rem;">${grades.final || 0}</div>
+                                    </div>
+                                    <div class="exam-grade-item">
+                                        <div class="exam-grade-label" data-ar="الإجمالي" data-en="Total">الإجمالي</div>
+                                        <div class="stat-value student" style="font-size: 1.5rem; ${total >= 30 ? 'color: var(--success)' : total >= 15 ? 'color: var(--warning)' : 'color: var(--danger)'}">${total}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">
+                        <div class="card-icon student" style="background: linear-gradient(135deg, #3498db, #2980b9);">🏖️</div>
+                        <span data-ar="طلب إجازة" data-en="Request Leave">طلب إجازة</span>
+                    </h2>
+                    <button class="btn btn-info" onclick="openLeaveRequestModal()" style="width: 100%;">
+                        <span>📝</span>
+                        <span data-ar="طلب إجازة أو عذر" data-en="Request Leave or Excuse">طلب إجازة أو عذر</span>
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">
+                        <div class="card-icon student">✅</div>
+                        <span data-ar="تسجيل الحضور" data-en="Mark Attendance">تسجيل الحضور</span>
+                    </h2>
+                    <div class="attendance-controls">
+                        <div class="control-group">
+                            <label class="control-label" data-ar="التاريخ" data-en="Date">التاريخ</label>
+                            <input type="date" class="control-input" id="attendanceDate" value="${new Date().toISOString().split('T')[0]}">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label" data-ar="المادة" data-en="Subject">المادة</label>
+                            <select class="control-select" id="attendanceSubject">
+                                <option value="">${lang === 'ar' ? 'اختر المادة' : 'Select Subject'}</option>
+                                ${state.subjects.map(s => `<option value="${s.id}">${lang === 'ar' ? getSubjectNameAr(s.id) : s.name}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="attendance-buttons" style="margin-top: 16px;">
+                        <button class="btn btn-success attendance-btn" onclick="studentMarkAttendance('present')">
+                            <span>✅</span>
+                            <span data-ar="حاضر" data-en="Present">حاضر</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">
+                        <div class="card-icon student">📋</div>
+                        <span data-ar="سجل الحضور" data-en="Attendance History">سجل الحضور</span>
+                    </h2>
+                    <div class="table-container">
+                        <table class="attendance-table">
+                            <thead>
+                                <tr>
+                                    <th>${lang === 'ar' ? 'التاريخ' : 'Date'}</th>
+                                    <th>${lang === 'ar' ? 'المادة' : 'Subject'}</th>
+                                    <th>${lang === 'ar' ? 'الحالة' : 'Status'}</th>
+                                    <th>${lang === 'ar' ? 'الدرجة' : 'Grade'}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${renderStudentAttendanceHistory()}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderStudentAttendanceHistory() {
+            const lang = state.language;
+            let filtered = state.attendance.filter(a => a.studentId === state.currentStudentId);
+            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (filtered.length === 0) return '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">' + (lang === 'ar' ? 'لا يوجد حضور' : 'No attendance') + '</td></tr>';
+
+            return filtered.map(record => {
+                const subject = state.subjects.find(s => s.id === record.subjectId);
+                const subjectName = subject ? (lang === 'ar' ? getSubjectNameAr(subject.id) : subject.name) : 'غير معروف';
+                const statusText = {
+                    'present': lang === 'ar' ? 'حاضر' : 'Present',
+                    'absent': lang === 'ar' ? 'غائب' : 'Absent',
+                    'late': lang === 'ar' ? 'متأخر' : 'Late',
+                    'excused': lang === 'ar' ? 'معذور' : 'Excused'
+                };
+
+                return `
+                    <tr>
+                        <td>${formatDate(record.date)}</td>
+                        <td>${subjectName}</td>
+                        <td><span class="status-badge status-${record.status}">${statusText[record.status]}</span></td>
+                        <td>${record.grade || '-'}/20</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function getSubjectNameAr(id) {
+            const arNames = { 1: 'الرياضيات', 2: 'الفيزياء', 3: 'الكيمياء', 4: 'الحاسوب', 5: 'اللغة الإنجليزية' };
+            return arNames[id] || state.subjects.find(s => s.id === id)?.name || 'غير معروف';
+        }
+
+        function getTotalAbsent() {
+            return state.attendance.filter(a => a.status === 'absent').length;
+        }
+
+        function getSubjectAbsent() {
+            if (!state.teacherSubjectId) return 0;
+            return state.attendance.filter(a => a.subjectId === state.teacherSubjectId && a.status === 'absent').length;
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return state.language === 'ar' 
+                ? date.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' })
+                : date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function openAddStudentModal() {
+            document.getElementById('addStudentModal').classList.add('show');
+        }
+
+        function closeAddStudentModal() {
+            document.getElementById('addStudentModal').classList.remove('show');
+            document.getElementById('newStudentName').value = '';
+            document.getElementById('newStudentSeat').value = '';
+        }
+
+        function openAddSubjectModal() {
+            document.getElementById('addSubjectModal').classList.add('show');
+        }
+
+        function closeAddSubjectModal() {
+            document.getElementById('addSubjectModal').classList.remove('show');
+            document.getElementById('newSubjectName').value = '';
+            document.getElementById('newSubjectCode').value = '';
+            document.getElementById('newSubjectColor').value = '#e94560';
+        }
+
+        function addSubject() {
+            const name = document.getElementById('newSubjectName').value;
+            const code = document.getElementById('newSubjectCode').value;
+            const color = document.getElementById('newSubjectColor').value;
+
+            if (!name || !code) {
+                showToast(state.language === 'ar' ? 'الرجاء إدخال جميع البيانات' : 'Please enter all data', 'error');
+                return;
+            }
+
+            state.subjects.push({
+                id: Date.now(),
+                name: name,
+                code: code,
+                color: color
+            });
+
+            saveState();
+            closeAddSubjectModal();
+            renderHeadDashboard();
+            showToast(state.language === 'ar' ? 'تمت إضافة المادة' : 'Subject added', 'success');
+        }
+
+        function addStudent() {
+            const name = document.getElementById('newStudentName').value;
+            const seat = document.getElementById('newStudentSeat').value;
+
+            if (!name || !seat) {
+                showToast(state.language === 'ar' ? 'الرجاء إدخال جميع البيانات' : 'Please enter all data', 'error');
+                return;
+            }
+
+            if (state.students.find(s => s.seatNumber === seat)) {
+                showToast(state.language === 'ar' ? 'رقم المقعد موجود' : 'Seat number exists', 'error');
+                return;
+            }
+
+            state.students.push({
+                id: Date.now(),
+                name: name,
+                seatNumber: seat,
+                suspended: false
+            });
+
+            saveState();
+            closeAddStudentModal();
+            if (state.userRole === 'head') renderHeadDashboard();
+            else renderTeacherDashboard();
+            showToast(state.language === 'ar' ? 'تمت إضافة الطالب' : 'Student added', 'success');
+        }
+
+        function openEditStudentModal(id) {
+            const student = state.students.find(s => s.id === id);
+            if (!student) return;
+
+            // Get grades for all subjects
+            const grades = {};
+            state.subjects.forEach(subject => {
+                const g = getStudentSubjectGrades(id, subject.id);
+                grades[subject.id] = g;
+            });
+
+            document.getElementById('editStudentId').value = id;
+            document.getElementById('editStudentName').value = student.name;
+            document.getElementById('editSeatNumber').value = student.seatNumber;
+            document.getElementById('editModal').classList.add('show');
+        }
+
+        function saveStudentEdit() {
+            const id = parseInt(document.getElementById('editStudentId').value);
+            const student = state.students.find(s => s.id === id);
+            
+            if (student) {
+                student.name = document.getElementById('editStudentName').value;
+                student.seatNumber = document.getElementById('editSeatNumber').value;
+                saveState();
+                closeModal();
+                if (state.userRole === 'head') renderHeadDashboard();
+                else renderTeacherDashboard();
+                showToast(state.language === 'ar' ? 'تم التحديث' : 'Updated', 'success');
+            }
+        }
+
+        function toggleStudentStatus(id) {
+            const student = state.students.find(s => s.id === id);
+            if (!student) return;
+
+            student.suspended = !student.suspended;
+            saveState();
+            if (state.userRole === 'head') renderHeadDashboard();
+            else renderTeacherDashboard();
+            showToast(state.language === 'ar' 
+                ? (student.suspended ? 'تم فصل الطالب' : 'تم إعادة تفعيل الطالب')
+                : (student.suspended ? 'Student suspended' : 'Student activated'), 'success');
+        }
+
+        function markAttendance(status) {
+            const date = document.getElementById('attendanceDate').value;
+            const subjectId = parseInt(document.getElementById('attendanceSubject').value) || state.teacherSubjectId;
+            const studentId = parseInt(document.getElementById('attendanceStudentSelect').value);
+
+            if (!date || !studentId) {
+                showToast(state.language === 'ar' ? 'الرجاء إدخال جميع البيانات' : 'Please enter all data', 'error');
+                return;
+            }
+
+            const existingIndex = state.attendance.findIndex(
+                a => a.date === date && a.subjectId === subjectId && a.studentId === studentId
+            );
+
+            if (existingIndex >= 0) {
+                state.attendance[existingIndex].status = status;
+                state.attendance[existingIndex].grade = status === 'present' ? 20 : (status === 'late' ? 15 : 0);
+            } else {
+                state.attendance.push({
+                    id: Date.now(),
+                    date: date,
+                    subjectId: subjectId,
+                    studentId: studentId,
+                    status: status,
+                    grade: status === 'present' ? 20 : (status === 'late' ? 15 : 0)
+                });
+            }
+
+            saveState();
+            renderTeacherDashboard();
+            showToast(state.language === 'ar' ? 'تم التسجيل' : 'Recorded', 'success');
+        }
+
+        function studentMarkAttendance(status) {
+            const date = document.getElementById('attendanceDate').value;
+            const subjectId = parseInt(document.getElementById('attendanceSubject').value);
+
+            if (!date || !subjectId) {
+                showToast(state.language === 'ar' ? 'الرجاء اختيار البيانات' : 'Please select data', 'error');
+                return;
+            }
+
+            const existingIndex = state.attendance.findIndex(
+                a => a.date === date && a.subjectId === subjectId && a.studentId === state.currentStudentId
+            );
+
+            if (existingIndex >= 0) {
+                state.attendance[existingIndex].status = status;
+            } else {
+                state.attendance.push({
+                    id: Date.now(),
+                    date: date,
+                    subjectId: subjectId,
+                    studentId: state.currentStudentId,
+                    status: status,
+                    grade: 20
+                });
+            }
+
+            saveState();
+            renderStudentDashboard();
+            showToast(state.language === 'ar' ? 'تم التسجيل' : 'Recorded', 'success');
+        }
+
+        function openAttendanceModal() {
+            const date = document.getElementById('attendanceDate').value;
+            const subjectId = parseInt(document.getElementById('attendanceSubject').value) || state.teacherSubjectId;
+            const studentId = parseInt(document.getElementById('attendanceStudentSelect').value);
+
+            if (!date || !studentId) {
+                showToast(state.language === 'ar' ? 'الرجاء اختيار البيانات' : 'Please select data', 'error');
+                return;
+            }
+
+            const existing = state.attendance.find(a => a.date === date && a.subjectId === subjectId && a.studentId === studentId);
+
+            document.getElementById('attendanceStudentId').value = studentId;
+            document.getElementById('attendanceDate').value = date;
+            document.getElementById('attendanceSubjectId').value = subjectId;
+
+            if (existing) {
+                document.getElementById('attendanceStatus').value = existing.status;
+                document.getElementById('attendanceGrade').value = existing.grade || 0;
+                document.getElementById('attendanceExcuse').value = existing.excuse || '';
+            } else {
+                document.getElementById('attendanceStatus').value = 'present';
+                document.getElementById('attendanceGrade').value = 20;
+                document.getElementById('attendanceExcuse').value = '';
+            }
+
+            document.getElementById('attendanceModal').classList.add('show');
+        }
+
+        function closeAttendanceModal() {
+            document.getElementById('attendanceModal').classList.remove('show');
+            document.getElementById('imagePreview').classList.add('hidden');
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('imagePreview').src = e.target.result;
+                document.getElementById('imagePreview').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveAttendance() {
+            const studentId = parseInt(document.getElementById('attendanceStudentId').value);
+            const date = document.getElementById('attendanceDate').value;
+            const subjectId = parseInt(document.getElementById('attendanceSubjectId').value);
+            const status = document.getElementById('attendanceStatus').value;
+            const grade = parseInt(document.getElementById('attendanceGrade').value) || 0;
+            const excuse = document.getElementById('attendanceExcuse').value;
+            const image = document.getElementById('imagePreview').src || null;
+
+            const existingIndex = state.attendance.findIndex(
+                a => a.date === date && a.subjectId === subjectId && a.studentId === studentId
+            );
+
+            if (existingIndex >= 0) {
+                state.attendance[existingIndex].status = status;
+                state.attendance[existingIndex].grade = grade;
+                state.attendance[existingIndex].excuse = excuse;
+                state.attendance[existingIndex].image = image;
+            } else {
+                state.attendance.push({
+                    id: Date.now(),
+                    date, subjectId, studentId, status, grade, excuse, image
+                });
+            }
+
+            saveState();
+            closeAttendanceModal();
+            if (state.userRole === 'head') renderHeadDashboard();
+            else renderTeacherDashboard();
+            showToast(state.language === 'ar' ? 'تم الحفظ' : 'Saved', 'success');
+        }
+
+        function openLeaveRequestModal() {
+            document.getElementById('leaveDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('leaveRequestModal').classList.add('show');
+        }
+
+        function closeLeaveRequestModal() {
+            document.getElementById('leaveRequestModal').classList.remove('show');
+            document.getElementById('leaveExcuse').value = '';
+        }
+
+        function submitLeaveRequest() {
+            const date = document.getElementById('leaveDate').value;
+            const type = document.getElementById('leaveType').value;
+            const excuse = document.getElementById('leaveExcuse').value;
+
+            if (!date) {
+                showToast(state.language === 'ar' ? 'الرجاء اختيار التاريخ' : 'Please select date', 'error');
+                return;
+            }
+
+            state.leaveRequests.push({
+                id: Date.now(),
+                studentId: state.currentStudentId,
+                date: date,
+                type: type,
+                excuse: excuse,
+                approved: null,
+                submittedAt: new Date().toISOString()
+            });
+
+            saveState();
+            closeLeaveRequestModal();
+            renderStudentDashboard();
+            showToast(state.language === 'ar' ? 'تم إرسال الطلب' : 'Request submitted', 'success');
+        }
+
+        function approveLeaveRequest(id) {
+            const request = state.leaveRequests.find(r => r.id === id);
+            if (!request) return;
+
+            request.approved = true;
+            
+            const subjectId = state.subjects[0]?.id || 1;
+            const existingIndex = state.attendance.findIndex(
+                a => a.date === request.date && a.subjectId === subjectId && a.studentId === request.studentId
+            );
+
+            if (existingIndex >= 0) {
+                state.attendance[existingIndex].status = 'excused';
+                state.attendance[existingIndex].excuse = request.excuse;
+            } else {
+                state.attendance.push({
+                    id: Date.now(),
+                    date: request.date,
+                    subjectId: subjectId,
+                    studentId: request.studentId,
+                    status: 'excused',
+                    grade: 20,
+                    excuse: request.excuse
+                });
+            }
+
+            saveState();
+            if (state.userRole === 'head') renderHeadDashboard();
+            else renderTeacherDashboard();
+            showToast(state.language === 'ar' ? 'تمت الموافقة' : 'Approved', 'success');
+        }
+
+        function rejectLeaveRequest(id) {
+            const request = state.leaveRequests.find(r => r.id === id);
+            if (!request) return;
+
+            request.approved = false;
+            saveState();
+            if (state.userRole === 'head') renderHeadDashboard();
+            else renderTeacherDashboard();
+            showToast(state.language === 'ar' ? 'تم الرفض' : 'Rejected', 'success');
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').classList.remove('show');
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function triggerConfetti() {
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#e94560', '#00d9a5', '#ffc947', '#5f27cd'] });
+        }
+
+        init();
+    </script>
+</body>
+</html>
